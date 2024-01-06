@@ -17,7 +17,7 @@ This is a reworking of PrivateGPT that can run in a FLASK app.
 - Must have an M1 / M2 mac or system with TPU cores to run smoothly
 - Must use python3.10.0
 - Must install requirements.txt
-- Must download LLM file from https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin and place it in the models folder. If you prefer a different GPT4All-J compatible model, just download it from https://huggingface.co/models and reference it in your .env file. 
+- Must download LLM file, I recommend... https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin and then place it in the models folder. If you prefer a different GPT4All-J compatible model, just download it from https://huggingface.co/models or https://gpt4all.io/models and reference it in your .env file. 
 
 
 
