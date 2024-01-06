@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flask Bot Interaction</title>
+        <script>
+
+            function autoExpand(field) {
+                // Reset field height
+                field.style.height = 'inherit';
+
+                // Get the computed styles for the element
+                const computed = window.getComputedStyle(field);
+
+                // Calculate the height
+                const height = parseInt(computed.getPropertyValue('border-top-width'), 10)
+                             + parseInt(computed.getPropertyValue('padding-top'), 10)
+                             + field.scrollHeight
+                             + parseInt(computed.getPropertyValue('padding-bottom'), 10)
+                             + parseInt(computed.getPropertyValue('border-bottom-width'), 10);
+
+                field.style.height = `${height}px`;
+            }
+
+
+            async function getBotResponse() {
+                const promptValue = document.getElementById('prompt-input').value;
+                const botResponseElement = document.getElementById('bot-response');
+                botResponseElement.scrollIntoView({ behavior: 'smooth' });
+                window.scrollTo(0, document.body.scrollHeight);
+
+                
+                // Display a loading message while waiting
+                botResponseElement.innerText = "Analyzing Documents...";
+
+                const response = await fetch('/bot_response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: promptValue })
+                });
+                const jsonResponse = await response.json();
+                botResponseElement.innerText = jsonResponse.response;
+                botResponseElement.scrollIntoView({ behavior: 'smooth' });
+            }
+
+
+
+
+
+            async function ingestFiles() {
+                const formData = new FormData(document.getElementById('file-form'));
+                const response = await fetch('/upload_files', {
+                    method: 'POST',
+                    body: formData
+                });
+                const jsonResponse = await response.json();
+                document.getElementById('file-status').innerText = jsonResponse.status;
+            }
+
+
+            async function triggerIngest() {
+                // Show loading icon
+                const button = document.getElementById('loadButton');
+                button.innerText = "Ingesting...";
+                
+                try {
+                    const response = await fetch('/ingest');
+                    const jsonResponse = await response.json();
+
+                    if(jsonResponse.status === 'success') {
+                        button.innerText = "Success!";
+                    } else {
+                        button.innerText = "Try Again";
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    button.innerText = "Error";
+                } finally {
+                    // Reset button text and hide file status
+                    button.innerText = "Ingest Files";
+                    // document.getElementById('file-status').style.display = 'none';
+                    document.getElementById('file-status').innerText = '';
+                    document.getElementById('file-input').value = "";
+
+                }
+            }
+
+
+            async function triggerTextIngest() {
+                // Show loading icon
+                const button = document.getElementById('textLoadButton');
+                button.innerText = "Ingesting...";
+                
+                try {
+                    const response = await fetch('/ingest');
+                    const jsonResponse = await response.json();
+
+                    if(jsonResponse.status === 'success') {
+                        button.innerText = "Success!";
+                    } else {
+                        button.innerText = "Try Again";
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    button.innerText = "Error";
+                } finally {
+                    // Reset button text and hide file status
+                    button.innerText = "Ingest Text";
+                    // document.getElementById('file-status').style.display = 'none';
+                    document.getElementById('text-submit-status').innerText = '';
+                    document.getElementById('title-input').value = "";
+                    document.getElementById('text-input').value = "";
+
+                }
+            }
+
+
+
+            async function fetchIngestedDocs() {
+                const response = await fetch('/get_ingested_docs_list', { method: 'POST' });
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    alert('Error fetching ingested documents list.');
+                    return [];
+                }
+            }
+
+
+
+
+
+            async function toggleFiles() {
+                const fileList = document.getElementById('file-list');
+                
+                // If the list is currently hidden, show it
+                if (fileList.style.display === 'none' || fileList.style.display === '') {
+
+                    const ingestedFiles = await fetchIngestedDocs();
+
+                    const response = await fetch('/get_docs_list', {
+                        method: 'POST'
+                    });
+                    const files = await response.json();
+
+                    if (files.length === 0) {
+                        // If the files array is empty, display a custom message
+                        fileList.innerHTML = '<li>No documents uploaded yet.</li>';
+                    } else {
+                        // fileList.innerHTML = files.map(file => `<li>${file} <button onclick="deleteFile('${file}')">Delete</button></li>`).join('');
+                        fileList.innerHTML = files.map(file => {
+                            const ingestedStatus = ingestedFiles.includes(file) ? "Ingested" : "Not Ingested";
+                            return `<li>${file} <button onclick="deleteFile('${file}')">Delete</button> - ${ingestedStatus}</li>`;
+                        }).join('');
+                    }  
+                    fileList.style.display = 'block';
+                } else {
+                    // If the list is currently shown, hide it
+                    fileList.style.display = 'none';
+                }
+            }
+
+
+            async function showFiles() {
+                const fileList = document.getElementById('file-list');
+                const ingestedFiles = await fetchIngestedDocs();
+                const response = await fetch('/get_docs_list', {
+                    method: 'POST'
+                });
+                const files = await response.json();
+                
+                if (files.length === 0) {
+                    // If the files array is empty, display a custom message
+                    fileList.innerHTML = '<li>No documents uploaded yet.</li>';
+                } else {
+                    // fileList.innerHTML = files.map(file => `<li>${file} <button onclick="deleteFile('${file}')">Delete</button></li>`).join('');
+                    fileList.innerHTML = files.map(file => {
+                        const ingestedStatus = ingestedFiles.includes(file) ? "Ingested" : "Not Ingested";
+                        return `<li>${file} <button onclick="deleteFile('${file}')">Delete</button> - ${ingestedStatus}</li>`;
+                    }).join('');
+                }  
+                fileList.style.display = 'block';
+               
+            }
+
+
+
+
+
+            async function submitText() {
+                const title = document.getElementById('title-input').value;
+                const text = document.getElementById('text-input').value;
+                const statusElement = document.getElementById('text-submit-status');
+
+                // Hide status message when entering new data
+                statusElement.style.display = 'none';
+
+                const response = await fetch('/save_text', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: title, text: text })
+                });
+
+                if (response.ok) {
+                    statusElement.innerText = title + " saved, click Ingest Text to give bot access";
+                    statusElement.style.display = 'block';
+                } else {
+                    statusElement.innerText = "Failed to save text. Please try again.";
+                    statusElement.style.display = 'block';
+                }
+            }
+
+
+
+
+
+
+            async function deleteFile(filename) {
+                const response = await fetch('/delete_files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: [filename] })
+                });
+
+                if (response.ok) {
+                    // Remove the file from the list
+                    showFiles();
+                } else {
+                    alert("Failed to delete the file.");
+                }
+            }
+
+
+        </script>
+    </head>
+
+
+
+    <body>
+
+
+        <div id = "title">
+            <h1>Local LLM Document Analyzer</h1>
+            <p id="title-note">You can upload any number of txt, pdf, doc, docx, html, csv, ppt, pptx, enex, eml, epub, md or odt files. You can also enter in text directly</p>
+        </div>
+
+
+        <div id = "current-documents">
+            <p id="current-documents-note">Click "Current Documents" to see what documents have been uploaded and are available to analze. "Ingested" means they are ready to be analyzed, "Not Ingested" means they have been uploaded but not ingested yet.  In the "Not Ingested" case, simply click the Ingest Files button.</p>
+            <button onclick="toggleFiles()">Current Documents</button>
+            <ul id="file-list" style="display: none;"></ul>
+            <p id="delete-note">Note: If you delete a file, you will need to click the Ingest Files button again for the bot to exclude those documents from its knowledge base</p>
+        </div>
+
+
+        <div id = "ingest-files">
+            <h2>Ingest Files</h2>
+            <p id="ingest-note">Note: you must upload and then ingest for the bot be aware of your docs.</p>
+            <form id="file-form" enctype="multipart/form-data">
+                <input type="file" name="file[]" multiple>
+                <input type="button" value="Upload Files" onclick="ingestFiles()">
+            </form>
+            <p id="file-status"></p>
+            <button id="loadButton" onclick="triggerIngest()">Ingest Files</button>
+        </div>
+
+
+        <div id = "ingest-text">
+            <h2>Add Text Manually</h2>
+            <p id="text-ingest-note">Note: you must upload and then ingest for the bot be aware of your text.</p>
+            <form id="text-form">
+                <input type="text" id="title-input" placeholder="Enter title" required>
+                <textarea id="text-input" placeholder="Enter text" oninput="autoExpand(this)" rows="1"></textarea>
+                <input type="button" value="Upload Text" onclick="submitText()">
+            </form>
+            <p id="text-submit-status" style="display: none;"></p>
+            <button id="textLoadButton" onclick="triggerTextIngest()">Ingest Text</button>
+        </div>
+
+
+        <div id = "ask-questions">
+            <h2>Ask Questions</h2>
+            <p id="current-documents-note">The ingestion process must be completed before you ask questions, so make sure you clicked one of the Ingest buttons above before asking a question.</p>
+            <p id="questions-note">Note: Wait for the loading message to finish, it might take up to a minute...</p>
+            <textarea id="prompt-input" placeholder="Enter prompt" oninput="autoExpand(this)" rows="1"></textarea>
+            <button onclick="getBotResponse()">Submit</button>
+            <p id="bot-response"></p>
+            <br>
+            <br>
+        </div>
+
+
+        <script>
+            showFiles();
+        </script>
+
+    </body>
+
+</html>
